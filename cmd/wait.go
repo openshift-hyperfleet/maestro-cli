@@ -169,4 +169,3 @@ func runWaitCommand(ctx context.Context, flags *WaitFlags) error {
 
 	return nil
 }
-

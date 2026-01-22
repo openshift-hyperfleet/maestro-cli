@@ -116,6 +116,14 @@ func runValidateCommand(ctx context.Context, flags *ValidateFlags) error {
 		errors = append(errors, "spec.workload.manifests cannot be empty")
 	}
 
+	// Check top-level type metadata
+	if mw.APIVersion == "" {
+		errors = append(errors, "apiVersion is required")
+	}
+	if mw.Kind == "" {
+		errors = append(errors, "kind is required")
+	}
+
 	// Validate each manifest
 	for i, manifest := range mw.Spec.Workload.Manifests {
 		manifestData := manifest.Raw

@@ -44,6 +44,7 @@ type ClientConfig struct {
 	HTTPEndpoint        string
 	GRPCInsecure        bool
 	GRPCServerCAFile    string
+	GRPCBrokerCAFile    string
 	GRPCClientCertFile  string
 	GRPCClientKeyFile   string
 	GRPCClientToken     string
@@ -193,7 +194,7 @@ func (c *Client) SourceID() string {
 // to avoid connection reset issues
 func createHTTPClient(insecure bool, log *logger.Logger) *http.Client {
 	transport := &http.Transport{
-		DisableKeepAlives:     true,  // Disable keep-alive to avoid connection reuse issues
+		DisableKeepAlives:     true, // Disable keep-alive to avoid connection reuse issues
 		MaxIdleConns:          10,
 		IdleConnTimeout:       30 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -710,7 +711,6 @@ type ResourceBundleSummary struct {
 	Conditions    []ConditionSummary `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
-
 // GetResourceBundleHTTP gets a single resource bundle by ID using the HTTP API
 func (c *Client) GetResourceBundleHTTP(ctx context.Context, id string) (*openapi.ResourceBundle, error) {
 	resource, _, err := c.httpClient.DefaultAPI.ApiMaestroV1ResourceBundlesIdGet(ctx, id).Execute()
@@ -731,7 +731,7 @@ func (c *Client) GetResourceBundleByNameHTTP(ctx context.Context, consumer, name
 
 	// Search by name and consumer_name
 	search := fmt.Sprintf("name = '%s' and consumer_name = '%s'", name, consumer)
-	
+
 	resourceList, _, err := c.httpClient.DefaultAPI.ApiMaestroV1ResourceBundlesGet(ctx).
 		Search(search).
 		Execute()
@@ -1041,7 +1041,7 @@ func (c *Client) WaitForDeletion(ctx context.Context, consumer, workName string,
 func evaluateConditionExpression(ctx context.Context, details *ManifestWorkDetails, expr string, log *logger.Logger) bool {
 	expr = strings.TrimSpace(expr)
 	if expr == "" {
-		return true
+		return false
 	}
 
 	// Handle parentheses - find matching pairs
@@ -1085,18 +1085,7 @@ func evaluateConditionExpression(ctx context.Context, details *ManifestWorkDetai
 		}
 	}
 
-	// Check for OR (lower precedence, evaluated first to split)
-	orParts := splitByOperator(expr, "OR", "||")
-	if len(orParts) > 1 {
-		for _, part := range orParts {
-			if evaluateConditionExpression(ctx, details, strings.TrimSpace(part), log) {
-				return true
-			}
-		}
-		return false
-	}
-
-	// Check for AND (higher precedence)
+	// Check for AND (higher precedence, evaluated first to split)
 	andParts := splitByOperator(expr, "AND", "&&")
 	if len(andParts) > 1 {
 		for _, part := range andParts {
@@ -1105,6 +1094,17 @@ func evaluateConditionExpression(ctx context.Context, details *ManifestWorkDetai
 			}
 		}
 		return true
+	}
+
+	// Check for OR (lower precedence)
+	orParts := splitByOperator(expr, "OR", "||")
+	if len(orParts) > 1 {
+		for _, part := range orParts {
+			if evaluateConditionExpression(ctx, details, strings.TrimSpace(part), log) {
+				return true
+			}
+		}
+		return false
 	}
 
 	// Single condition - evaluate it
@@ -1162,6 +1162,17 @@ func splitByOperator(expr, op1, op2 string) []string {
 func evaluateSingleCondition(ctx context.Context, details *ManifestWorkDetails, condition string, log *logger.Logger) bool {
 	condition = strings.TrimSpace(condition)
 
+	log.Debug(ctx, "Evaluating single condition", logger.Fields{
+		"condition": condition,
+		"trimmed":   condition == "",
+	})
+
+	// Empty conditions are invalid
+	if condition == "" {
+		log.Debug(ctx, "Empty condition detected, returning false")
+		return false
+	}
+
 	// Check if it's a statusFeedback condition (contains ":")
 	if strings.Contains(condition, ":") {
 		return evaluateStatusFeedbackCondition(ctx, details, condition, log)
@@ -1213,10 +1224,10 @@ func checkDetailsCondition(ctx context.Context, details *ManifestWorkDetails, co
 		appliedTime, err2 := time.Parse(time.RFC3339, appliedCond.LastTransitionTime)
 		if err1 == nil && err2 == nil {
 			log.Debug(ctx, "Comparing condition timestamps", logger.Fields{
-				"condition":       condType,
-				"conditionTime":   targetCond.LastTransitionTime,
-				"appliedTime":     appliedCond.LastTransitionTime,
-				"isFresh":         !targetTime.Before(appliedTime),
+				"condition":     condType,
+				"conditionTime": targetCond.LastTransitionTime,
+				"appliedTime":   appliedCond.LastTransitionTime,
+				"isFresh":       !targetTime.Before(appliedTime),
 			})
 			// Condition must have transitioned at or after the Applied time
 			if targetTime.Before(appliedTime) {
@@ -1605,14 +1616,37 @@ func createTLSConfig(config ClientConfig) (*tls.Config, error) {
 	tlsConfig := &tls.Config{}
 
 	// Load server CA for verification
+	caCertPool := x509.NewCertPool()
+	serverCALoaded := false
+	brokerCALoaded := false
+
 	if config.GRPCServerCAFile != "" {
 		caCert, err := os.ReadFile(config.GRPCServerCAFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read server CA file: %w", err)
 		}
 
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			return nil, fmt.Errorf("failed to parse server CA certificate")
+		}
+		serverCALoaded = true
+	}
+
+	// Load broker CA for verification (if different from server CA)
+	if config.GRPCBrokerCAFile != "" {
+		caCert, err := os.ReadFile(config.GRPCBrokerCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read broker CA file: %w", err)
+		}
+
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			return nil, fmt.Errorf("failed to parse broker CA certificate")
+		}
+		brokerCALoaded = true
+	}
+
+	// Set RootCAs if any CA certificates were loaded
+	if serverCALoaded || brokerCALoaded {
 		tlsConfig.RootCAs = caCertPool
 	}
 
@@ -1655,7 +1689,7 @@ func validateSearchQuery(value string) error {
 	// This matches typical Kubernetes resource naming conventions
 	for _, r := range value {
 		if !(r >= 'a' && r <= 'z') && !(r >= 'A' && r <= 'Z') &&
-		   !(r >= '0' && r <= '9') && r != '-' && r != '_' && r != '.' {
+			!(r >= '0' && r <= '9') && r != '-' && r != '_' && r != '.' {
 			return fmt.Errorf("invalid character '%c' in search query, only alphanumeric, hyphens, underscores, and dots allowed", r)
 		}
 	}

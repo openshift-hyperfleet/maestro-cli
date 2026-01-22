@@ -320,12 +320,12 @@ type RequestContext map[string]interface{}
 func (rc RequestContext) ToJSON() string {
 	masked := make(map[string]interface{})
 	sensitiveKeys := map[string]bool{
-		"password":     true,
-		"token":        true,
-		"secret":       true,
-		"key":          true,
-		"credential":   true,
-		"auth":         true,
+		"password":      true,
+		"token":         true,
+		"secret":        true,
+		"key":           true,
+		"credential":    true,
+		"auth":          true,
 		"authorization": true,
 	}
 

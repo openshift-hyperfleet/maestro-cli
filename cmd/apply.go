@@ -139,6 +139,7 @@ func runApplyCommand(ctx context.Context, flags *ApplyFlags) error {
 		HTTPEndpoint:        flags.HTTPEndpoint,
 		GRPCInsecure:        flags.GRPCInsecure,
 		GRPCServerCAFile:    flags.GRPCServerCAFile,
+		GRPCBrokerCAFile:    flags.GRPCBrokerCAFile,
 		GRPCClientCertFile:  flags.GRPCClientCertFile,
 		GRPCClientKeyFile:   flags.GRPCClientKeyFile,
 		GRPCClientToken:     flags.GRPCClientToken,
@@ -165,13 +166,18 @@ func runApplyCommand(ctx context.Context, flags *ApplyFlags) error {
 	// Apply ManifestWork
 	applyResult, err := client.ApplyManifestWork(ctx, flags.Consumer, mw, log)
 	if err != nil {
-		manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
+		if writeErr := manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
 			Name:      mw.Name,
 			Consumer:  flags.Consumer,
 			Status:    "Failed",
 			Message:   err.Error(),
 			Timestamp: time.Now(),
-		})
+		}); writeErr != nil {
+			log.Warn(ctx, "Failed to write results file", logger.Fields{
+				"results_path": flags.ResultsPath,
+				"error":        writeErr.Error(),
+			})
+		}
 
 		log.Error(ctx, err, "Failed to apply ManifestWork", logger.Fields{
 			"manifest_name": mw.Name,
@@ -187,13 +193,19 @@ func runApplyCommand(ctx context.Context, flags *ApplyFlags) error {
 	})
 
 	// Write initial success result
-	manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
+	if writeErr := manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
 		Name:      mw.Name,
 		Consumer:  flags.Consumer,
 		Status:    "Applied",
 		Message:   "ManifestWork applied successfully",
 		Timestamp: time.Now(),
-	})
+	}); writeErr != nil {
+		log.Warn(ctx, "Failed to write results file", logger.Fields{
+			"results_path": flags.ResultsPath,
+			"error":        writeErr.Error(),
+		})
+		return fmt.Errorf("failed to write results file: %w", writeErr)
+	}
 
 	// Wait for condition if requested (using HTTP polling, like kubectl wait)
 	if flags.Wait != "" {
@@ -235,7 +247,6 @@ func runApplyCommand(ctx context.Context, flags *ApplyFlags) error {
 
 	return nil
 }
-
 
 // getLogLevel determines the log level based on verbose flag
 func getLogLevel(verbose bool) string {

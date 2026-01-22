@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -148,8 +149,9 @@ func getEnvOrDefault(envKey, defaultValue string) string {
 }
 
 // getEnvBool returns true if the environment variable is set to "true", "1", or "yes"
+// Accepts values with surrounding whitespace and different cases (e.g., " TRUE ", "True", " yes")
 func getEnvBool(envKey string) bool {
-	value := os.Getenv(envKey)
+	value := strings.ToLower(strings.TrimSpace(os.Getenv(envKey)))
 	return value == "true" || value == "1" || value == "yes"
 }
 

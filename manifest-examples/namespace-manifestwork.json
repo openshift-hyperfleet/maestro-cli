@@ -33,7 +33,7 @@
         "resourceIdentifier": {
           "group": "",
           "resource": "namespaces",
-          "name": "hyperfleet-system"
+          "name": "hyperfleet-system-maestro-cli-test"
         },
         "feedbackRules": [
           {

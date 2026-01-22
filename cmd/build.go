@@ -182,6 +182,7 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 		HTTPEndpoint:        flags.HTTPEndpoint,
 		GRPCInsecure:        flags.GRPCInsecure,
 		GRPCServerCAFile:    flags.GRPCServerCAFile,
+		GRPCBrokerCAFile:    flags.GRPCBrokerCAFile,
 		GRPCClientCertFile:  flags.GRPCClientCertFile,
 		GRPCClientKeyFile:   flags.GRPCClientKeyFile,
 		GRPCClientToken:     flags.GRPCClientToken,
@@ -254,10 +255,15 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 	}
 
 	log.Info(ctx, "Build complete", logger.Fields{
-		"name":       existing.Name,
-		"manifests":  len(existing.Spec.Workload.Manifests),
-		"strategy":   flags.Strategy,
+		"name":      existing.Name,
+		"manifests": len(existing.Spec.Workload.Manifests),
+		"strategy":  flags.Strategy,
 	})
+
+	// Early guard: cannot use --wait without --apply
+	if flags.Wait != "" && !flags.Apply {
+		return fmt.Errorf("cannot use --wait without --apply")
+	}
 
 	// Dry run - just show what would happen
 	if flags.DryRun {
@@ -267,6 +273,9 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 
 	// Output to file or stdout (if not applying)
 	if !flags.Apply {
+		if flags.Wait != "" {
+			return fmt.Errorf("cannot use --wait when not using --apply")
+		}
 		return outputManifestWork(existing, flags.OutputFile, flags.Output)
 	}
 
@@ -278,13 +287,19 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 
 	result, err := client.ApplyManifestWork(ctx, flags.Consumer, existing, log)
 	if err != nil {
-		manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
+		writeErr := manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
 			Name:      existing.Name,
 			Consumer:  flags.Consumer,
 			Status:    "Failed",
 			Message:   err.Error(),
 			Timestamp: time.Now(),
 		})
+		if writeErr != nil {
+			log.Error(ctx, writeErr, "Failed to write results file", logger.Fields{
+				"path": flags.ResultsPath,
+			})
+			return fmt.Errorf("failed to apply ManifestWork: %w; also failed to write results: %v", err, writeErr)
+		}
 
 		log.Error(ctx, err, "Failed to apply ManifestWork", logger.Fields{
 			"name":     existing.Name,
@@ -299,13 +314,18 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 		"generation":       result.Generation,
 	})
 
-	manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
+	if err := manifestwork.WriteResult(flags.ResultsPath, manifestwork.StatusResult{
 		Name:      existing.Name,
 		Consumer:  flags.Consumer,
 		Status:    "Applied",
 		Message:   "ManifestWork built and applied successfully",
 		Timestamp: time.Now(),
-	})
+	}); err != nil {
+		log.Error(ctx, err, "Failed to write results file", logger.Fields{
+			"path": flags.ResultsPath,
+		})
+		return fmt.Errorf("ManifestWork applied successfully but failed to write results: %w", err)
+	}
 
 	// Wait for condition if requested
 	if flags.Wait != "" {
@@ -346,7 +366,6 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 
 	return nil
 }
-
 
 // outputManifestWork outputs the ManifestWork to file or stdout
 func outputManifestWork(mw *workv1.ManifestWork, outputFile, format string) error {

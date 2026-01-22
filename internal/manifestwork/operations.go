@@ -17,17 +17,17 @@ import (
 // StatusResult represents the result of a maestro-cli operation for status-reporter integration
 type StatusResult struct {
 	// Resource bundle identification
-	ID               string `json:"id,omitempty"`               // Resource bundle UUID
-	Name             string `json:"name"`                       // Original metadata.name from ManifestWork
-	Consumer         string `json:"consumer"`                   // Consumer/cluster name
-	Version          int32  `json:"version,omitempty"`          // Resource bundle version
-	CreatedAt        string `json:"createdAt,omitempty"`        // Creation timestamp
-	UpdatedAt        string `json:"updatedAt,omitempty"`        // Last update timestamp
+	ID        string `json:"id,omitempty"`        // Resource bundle UUID
+	Name      string `json:"name"`                // Original metadata.name from ManifestWork
+	Consumer  string `json:"consumer"`            // Consumer/cluster name
+	Version   int32  `json:"version,omitempty"`   // Resource bundle version
+	CreatedAt string `json:"createdAt,omitempty"` // Creation timestamp
+	UpdatedAt string `json:"updatedAt,omitempty"` // Last update timestamp
 
 	// Operation result
-	Status    string    `json:"status"`              // Applied, Failed, InProgress, Available, Progressing, Degraded
-	Message   string    `json:"message"`             // Human-readable message
-	Timestamp time.Time `json:"timestamp"`           // When this result was recorded
+	Status    string    `json:"status"`    // Applied, Failed, InProgress, Available, Progressing, Degraded
+	Message   string    `json:"message"`   // Human-readable message
+	Timestamp time.Time `json:"timestamp"` // When this result was recorded
 
 	// Detailed status
 	Conditions []ConditionInfo  `json:"conditions,omitempty"` // ManifestWork-level conditions
@@ -60,9 +60,9 @@ type ResourceStatus struct {
 // a full ManifestWork or just the spec/manifests portion
 type SourceFile struct {
 	// Full ManifestWork fields (optional)
-	APIVersion string            `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-	Kind       string            `json:"kind,omitempty" yaml:"kind,omitempty"`
-	Metadata   map[string]any    `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	APIVersion string                   `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+	Kind       string                   `json:"kind,omitempty" yaml:"kind,omitempty"`
+	Metadata   map[string]any           `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Spec       *workv1.ManifestWorkSpec `json:"spec,omitempty" yaml:"spec,omitempty"`
 
 	// Direct manifests array (for simple source files)

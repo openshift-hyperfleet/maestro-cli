@@ -87,6 +87,14 @@ Examples:
 
 // runDiffCommand executes the diff command
 func runDiffCommand(ctx context.Context, flags *DiffFlags) error {
+	// Setup context with timeout if specified
+	ctxWithTimeout := ctx
+	if flags.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctxWithTimeout, cancel = context.WithTimeout(ctx, flags.Timeout)
+		defer cancel()
+	}
+
 	// Initialize logger
 	logLevel := "info"
 	if flags.Verbose {
@@ -117,29 +125,34 @@ func runDiffCommand(ctx context.Context, flags *DiffFlags) error {
 	}
 	defer client.Close()
 
-	// Validate consumer exists
-	if err := client.ValidateConsumer(ctx, flags.Consumer); err != nil {
+	// Validate consumer exists (with timeout)
+	if err := client.ValidateConsumer(ctxWithTimeout, flags.Consumer); err != nil {
 		return err
 	}
 
-	// Get remote ManifestWork
+	// Get remote ManifestWork (with timeout)
 	log.Debug(ctx, "Fetching remote ManifestWork", logger.Fields{
 		"name":     localMW.Name,
 		"consumer": flags.Consumer,
 	})
 
-	remoteMW, err := client.GetResourceBundleFullHTTP(ctx, flags.Consumer, localMW.Name)
+	remoteMW, err := client.GetResourceBundleFullHTTP(ctxWithTimeout, flags.Consumer, localMW.Name)
 	if err != nil {
-		// ManifestWork doesn't exist remotely
-		fmt.Printf("ManifestWork %q does not exist on consumer %q\n", localMW.Name, flags.Consumer)
-		fmt.Printf("\nLocal ManifestWork would CREATE:\n")
-		fmt.Printf("  Name: %s\n", localMW.Name)
-		fmt.Printf("  Manifests: %d\n", len(localMW.Spec.Workload.Manifests))
-		for i, m := range localMW.Spec.Workload.Manifests {
-			info := getManifestInfo(m.Raw)
-			fmt.Printf("    [%d] %s\n", i, info)
+		// Check if this is a "not found" error (404) vs other errors
+		if strings.Contains(err.Error(), "not found") {
+			// ManifestWork doesn't exist remotely
+			fmt.Printf("ManifestWork %q does not exist on consumer %q\n", localMW.Name, flags.Consumer)
+			fmt.Printf("\nLocal ManifestWork would CREATE:\n")
+			fmt.Printf("  Name: %s\n", localMW.Name)
+			fmt.Printf("  Manifests: %d\n", len(localMW.Spec.Workload.Manifests))
+			for i, m := range localMW.Spec.Workload.Manifests {
+				info := getManifestInfo(m.Raw)
+				fmt.Printf("    [%d] %s\n", i, info)
+			}
+			return nil
 		}
-		return nil
+		// Return other errors as-is (network issues, auth problems, etc.)
+		return fmt.Errorf("failed to fetch remote ManifestWork: %w", err)
 	}
 
 	// Compare manifests
@@ -150,11 +163,12 @@ func runDiffCommand(ctx context.Context, flags *DiffFlags) error {
 
 	// Convert local manifests to comparable format
 	localManifests := make([]map[string]interface{}, 0, len(localMW.Spec.Workload.Manifests))
-	for _, m := range localMW.Spec.Workload.Manifests {
+	for i, m := range localMW.Spec.Workload.Manifests {
 		var manifest map[string]interface{}
-		if err := json.Unmarshal(m.Raw, &manifest); err == nil {
-			localManifests = append(localManifests, manifest)
+		if err := json.Unmarshal(m.Raw, &manifest); err != nil {
+			return fmt.Errorf("failed to parse local manifest %d: %w", i, err)
 		}
+		localManifests = append(localManifests, manifest)
 	}
 
 	// Compare manifest counts
