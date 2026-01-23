@@ -12,7 +12,7 @@ import (
 	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/yaml"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
 )
 
 // StatusResult represents the result of a maestro-cli operation for status-reporter integration
@@ -134,10 +134,21 @@ func LoadManifestWorkFromFile(filePath string) (*workv1.ManifestWork, error) {
 func UnmarshalManifest(data []byte, v interface{}) error {
 	// Try JSON first (stricter)
 	if err := json.Unmarshal(data, v); err == nil {
+		// If the target is a Manifest, set the Raw field
+		if manifest, ok := v.(*workv1.Manifest); ok {
+			manifest.Raw = data
+		}
 		return nil
 	}
 	// Fall back to YAML
-	return yaml.Unmarshal(data, v)
+	if err := yaml.Unmarshal(data, v); err == nil {
+		// If the target is a Manifest, set the Raw field
+		if manifest, ok := v.(*workv1.Manifest); ok {
+			manifest.Raw = data
+		}
+		return nil
+	}
+	return fmt.Errorf("failed to unmarshal as JSON or YAML")
 }
 
 // ToManifestWork converts a SourceFile to a ManifestWork, using the provided name
@@ -325,56 +336,6 @@ func mergeManifestConfigs(existing, source []workv1.ManifestConfigOption) []work
 	return result
 }
 
-// RemoveManifests removes specified manifests from a ManifestWork
-// Manifests are identified by "kind/namespace/name" or "kind/name" (for cluster-scoped resources)
-func RemoveManifests(mw *workv1.ManifestWork, toRemove []string) (*workv1.ManifestWork, []string) {
-	result := mw.DeepCopy()
-	removed := []string{}
-
-	// Build a set of keys to remove (support both kind/ns/name and kind/name formats)
-	removeSet := make(map[string]bool)
-	for _, r := range toRemove {
-		removeSet[r] = true
-	}
-
-	// Filter manifests
-	filteredManifests := []workv1.Manifest{}
-	for _, m := range result.Spec.Workload.Manifests {
-		key := getManifestKey(m)
-		shortKey := getManifestShortKey(m) // kind/name without namespace
-
-		if removeSet[key] || removeSet[shortKey] {
-			removed = append(removed, key)
-		} else {
-			filteredManifests = append(filteredManifests, m)
-		}
-	}
-
-	result.Spec.Workload.Manifests = filteredManifests
-
-	// Also remove corresponding manifest configs
-	if len(result.Spec.ManifestConfigs) > 0 {
-		filteredConfigs := []workv1.ManifestConfigOption{}
-		for _, c := range result.Spec.ManifestConfigs {
-			configKey := fmt.Sprintf("%s/%s/%s",
-				c.ResourceIdentifier.Resource,
-				c.ResourceIdentifier.Namespace,
-				c.ResourceIdentifier.Name,
-			)
-			shortConfigKey := fmt.Sprintf("%s/%s",
-				c.ResourceIdentifier.Resource,
-				c.ResourceIdentifier.Name,
-			)
-
-			if !removeSet[configKey] && !removeSet[shortConfigKey] {
-				filteredConfigs = append(filteredConfigs, c)
-			}
-		}
-		result.Spec.ManifestConfigs = filteredConfigs
-	}
-
-	return result, removed
-}
 
 // getManifestShortKey extracts kind/name key (without namespace) from a manifest
 func getManifestShortKey(m workv1.Manifest) string {
@@ -435,7 +396,7 @@ func WriteToFile(mw *workv1.ManifestWork, filePath string) error {
 		return fmt.Errorf("failed to marshal ManifestWork: %w", err)
 	}
 
-	// Use 0640: owner read/write, group read (more secure than 0644 world-readable)
+	// Use 0600: owner read/write only (most secure, no group/world access)
 	// ManifestWork files may contain sensitive Kubernetes manifests
 	if err := os.WriteFile(filePath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", filePath, err)
@@ -459,7 +420,7 @@ func WriteResult(resultsPath string, result StatusResult) error {
 		return fmt.Errorf("failed to marshal status result: %w", err)
 	}
 
-	// Use 0640: owner read/write, group read (restrictive but allows CI/CD group access)
+	// Use 0600: owner read/write only (most secure, no group/world access)
 	// Results files contain status info for status-reporter integration
 	if err := os.WriteFile(resultsPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write results to %s: %w", resultsPath, err)

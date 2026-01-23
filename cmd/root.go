@@ -35,15 +35,15 @@ Examples:
   maestro-cli get --name=hyperfleet-cluster-west-1-nodepool --consumer=cluster-west-1
 
   # Wait for a condition
-  maestro-cli wait --name=hyperfleet-cluster-west-1-nodepool --consumer=cluster-west-1 --condition=Applied
+  maestro-cli wait --name=hyperfleet-cluster-west-1-nodepool --consumer=cluster-west-1 --condition=Applied`
+)
 
-  # Delete a ManifestWork
-  maestro-cli delete --name=hyperfleet-cluster-west-1-nodepool --consumer=cluster-west-1
+const (
+	// DefaultWaitTimeout is the default timeout for waiting operations across all commands
+	DefaultWaitTimeout = 5 * time.Minute
 
-  # Using environment variables
-  export MAESTRO_GRPC_ENDPOINT=maestro.example.com:8090
-  export MAESTRO_HTTP_ENDPOINT=https://maestro.example.com:8000
-  maestro-cli apply --manifest-file=nodepool.yaml --consumer=cluster-west-1`
+	// MaxBackoffInterval is the maximum interval for exponential backoff in watch operations
+	MaxBackoffInterval = 5 * time.Minute
 )
 
 // Environment variable names

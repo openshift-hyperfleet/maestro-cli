@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 func TestCreateTLSConfig(t *testing.T) {
@@ -291,6 +291,95 @@ func TestEvaluateConditionExpression(t *testing.T) {
 			result := evaluateConditionExpression(ctx, tt.details, tt.expr, log)
 			if result != tt.expected {
 				t.Errorf("evaluateConditionExpression(%q) = %v, expected %v", tt.expr, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSplitByOperator(t *testing.T) {
+	tests := []struct {
+		name     string
+		expr     string
+		op1      string
+		op2      string
+		expected []string
+	}{
+		{
+			name:     "spaced operators - AND",
+			expr:     "A && B",
+			op1:      "AND",
+			op2:      "&&",
+			expected: []string{"A", "B"},
+		},
+		{
+			name:     "spaced operators - OR",
+			expr:     "A || B",
+			op1:      "OR",
+			op2:      "||",
+			expected: []string{"A", "B"},
+		},
+		{
+			name:     "compact operators - AND",
+			expr:     "A&&B",
+			op1:      "AND",
+			op2:      "&&",
+			expected: []string{"A", "B"},
+		},
+		{
+			name:     "compact operators - OR",
+			expr:     "A||B",
+			op1:      "OR",
+			op2:      "||",
+			expected: []string{"A", "B"},
+		},
+		{
+			name:     "mixed operators",
+			expr:     "A && B || C",
+			op1:      "OR",
+			op2:      "||",
+			expected: []string{"A && B", "C"},
+		},
+		{
+			name:     "no operators",
+			expr:     "single condition",
+			op1:      "AND",
+			op2:      "&&",
+			expected: []string{"single condition"},
+		},
+		{
+			name:     "parentheses",
+			expr:     "(A && B) || C",
+			op1:      "OR",
+			op2:      "||",
+			expected: []string{"(A && B)", "C"},
+		},
+		{
+			name:     "compact at end",
+			expr:     "A&&B",
+			op1:      "AND",
+			op2:      "&&",
+			expected: []string{"A", "B"},
+		},
+		{
+			name:     "multiple compact operators",
+			expr:     "A&&B&&C",
+			op1:      "AND",
+			op2:      "&&",
+			expected: []string{"A", "B", "C"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := splitByOperator(tt.expr, tt.op1, tt.op2)
+			if len(result) != len(tt.expected) {
+				t.Errorf("splitByOperator(%q, %q, %q) length = %d, expected %d", tt.expr, tt.op1, tt.op2, len(result), len(tt.expected))
+				return
+			}
+			for i, expected := range tt.expected {
+				if result[i] != expected {
+					t.Errorf("splitByOperator(%q, %q, %q)[%d] = %q, expected %q", tt.expr, tt.op1, tt.op2, i, result[i], expected)
+				}
 			}
 		})
 	}

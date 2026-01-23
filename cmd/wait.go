@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/internal/manifestwork"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 const (
@@ -139,7 +139,7 @@ func runWaitCommand(ctx context.Context, flags *WaitFlags) error {
 	// Use timeout if specified, otherwise default to 5 minutes
 	timeout := flags.Timeout
 	if timeout == 0 {
-		timeout = 5 * time.Minute
+		timeout = DefaultWaitTimeout
 	}
 
 	log.Info(ctx, "Waiting for condition", logger.Fields{

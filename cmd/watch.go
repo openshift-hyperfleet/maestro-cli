@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 // WatchFlags contains flags for the watch command
@@ -186,7 +186,7 @@ func updateBackoffInterval(currentInterval *time.Duration, consecutiveFailures *
 	}
 
 	// Exponential backoff: base * 2^(failures-1), cap at 5 minutes
-	maxInterval := 5 * time.Minute
+	maxInterval := MaxBackoffInterval
 	multiplier := 1 << (*consecutiveFailures - 1) // Use integer bit shift
 	newInterval := baseInterval * time.Duration(multiplier)
 

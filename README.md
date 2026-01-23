@@ -21,9 +21,9 @@ make build
 make build VERSION=1.2.3 GIT_COMMIT=abc123
 
 # Manual build with ldflags
-go build -ldflags="-X github.com/hyperfleet/maestro-cli/cmd.Version=1.2.3 \
-                   -X github.com/hyperfleet/maestro-cli/cmd.Commit=abc123 \
-                   -X github.com/hyperfleet/maestro-cli/cmd.Date=2024-01-01T10:00:00Z" \
+go build -ldflags="-X github.com/openshift-hyperfleet/maestro-cli/cmd.Version=1.2.3 \
+                   -X github.com/openshift-hyperfleet/maestro-cli/cmd.Commit=abc123 \
+                   -X github.com/openshift-hyperfleet/maestro-cli/cmd.Date=2024-01-01T10:00:00Z" \
   ./cmd/maestro-cli
 
 # Check version info
@@ -40,7 +40,7 @@ go build -ldflags="-X github.com/hyperfleet/maestro-cli/cmd.Version=1.2.3 \
 
 ## Global Flags
 
-```
+```text
 --grpc-endpoint string       Maestro gRPC server address
 --http-endpoint string       Maestro HTTP API endpoint
 --grpc-insecure              Skip TLS verification

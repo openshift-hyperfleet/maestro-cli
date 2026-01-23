@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 // GetFlags contains flags for the get command
@@ -88,6 +88,13 @@ Examples:
 
 // runGetCommand executes the get command
 func runGetCommand(ctx context.Context, flags *GetFlags) error {
+	// Setup context with timeout if specified
+	if flags.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, flags.Timeout)
+		defer cancel()
+	}
+
 	// Initialize logger
 	logLevel := "info"
 	if flags.Verbose {

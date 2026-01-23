@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 // ListFlags contains flags for the list command

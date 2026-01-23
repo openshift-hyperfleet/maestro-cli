@@ -18,12 +18,13 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	workv1client "open-cluster-management.io/api/client/work/clientset/versioned/typed/work/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 	grpcoptions "open-cluster-management.io/sdk-go/pkg/cloudevents/generic/options/grpc"
 
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 const (
@@ -430,7 +431,7 @@ func (c *Client) GetManifestWorkByNameHTTP(ctx context.Context, consumer, name s
 		}
 	}
 
-	return nil, fmt.Errorf("ManifestWork %q not found for consumer %q", name, consumer)
+	return nil, errors.NewNotFound(workv1.Resource("manifestwork"), name)
 }
 
 // GetManifestWorkDetailsHTTP gets full details of a ManifestWork by name using HTTP API
@@ -623,7 +624,7 @@ func (c *Client) GetManifestWorkDetailsHTTP(ctx context.Context, consumer, name 
 		return details, nil
 	}
 
-	return nil, fmt.Errorf("ManifestWork %q not found for consumer %q", name, consumer)
+	return nil, errors.NewNotFound(workv1.Resource("manifestwork"), name)
 }
 
 // DeleteManifestWorkByNameHTTP deletes a ManifestWork by its original name using HTTP API
@@ -744,7 +745,7 @@ func (c *Client) GetResourceBundleByNameHTTP(ctx context.Context, consumer, name
 	}
 
 	if len(resourceList.Items) == 0 {
-		return nil, fmt.Errorf("resource bundle %s not found for consumer %s", name, consumer)
+		return nil, errors.NewNotFound(schema.GroupResource{Group: "maestro.io", Resource: "resourcebundles"}, name)
 	}
 
 	return &resourceList.Items[0], nil
@@ -819,22 +820,31 @@ func (c *Client) GetResourceBundleFullHTTP(ctx context.Context, consumer, name s
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("ManifestWork %q not found for consumer %q", name, consumer)
+	return nil, errors.NewNotFound(workv1.Resource("manifestwork"), name)
 }
 
 // DeleteManifestWork deletes a ManifestWork from the target consumer
 func (c *Client) DeleteManifestWork(ctx context.Context, consumer, name string) error {
+	if c.workClient == nil {
+		return fmt.Errorf("gRPC client not available: DeleteManifestWork requires gRPC connection")
+	}
 	return c.workClient.ManifestWorks(consumer).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 // UpdateManifestWork updates an existing ManifestWork
 func (c *Client) UpdateManifestWork(ctx context.Context, consumer string, manifestWork *workv1.ManifestWork) (*workv1.ManifestWork, error) {
+	if c.workClient == nil {
+		return nil, fmt.Errorf("gRPC client not available: UpdateManifestWork requires gRPC connection")
+	}
 	manifestWork.Namespace = consumer
 	return c.workClient.ManifestWorks(consumer).Update(ctx, manifestWork, metav1.UpdateOptions{})
 }
 
 // PatchManifestWork updates an existing ManifestWork using patch (supports gRPC)
 func (c *Client) PatchManifestWork(ctx context.Context, consumer string, existingWork, updatedWork *workv1.ManifestWork, log *logger.Logger) (*workv1.ManifestWork, error) {
+	if c.workClient == nil {
+		return nil, fmt.Errorf("gRPC client not available: PatchManifestWork requires gRPC connection")
+	}
 	updatedWork.Namespace = consumer
 
 	patchData, err := grpcsource.ToWorkPatch(existingWork, updatedWork)
@@ -853,6 +863,9 @@ func (c *Client) PatchManifestWork(ctx context.Context, consumer string, existin
 
 // ManifestWorkExists checks if a ManifestWork exists
 func (c *Client) ManifestWorkExists(ctx context.Context, consumer, name string) (bool, error) {
+	if c.workClient == nil {
+		return false, fmt.Errorf("gRPC client not available: ManifestWorkExists requires gRPC connection")
+	}
 	_, err := c.workClient.ManifestWorks(consumer).Get(ctx, name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return false, nil
@@ -870,7 +883,7 @@ func (c *Client) ApplyManifestWork(ctx context.Context, consumer string, manifes
 
 	// Check if ManifestWork exists using HTTP API (reliable, reads from DB)
 	existingSummary, err := c.GetManifestWorkByNameHTTP(ctx, consumer, manifestWork.Name)
-	if err != nil && !strings.Contains(err.Error(), "not found") {
+	if err != nil && !errors.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to check existing work: %w", err)
 	}
 
@@ -1021,7 +1034,7 @@ func (c *Client) WaitForDeletion(ctx context.Context, consumer, workName string,
 			_, err := c.GetManifestWorkByNameHTTP(ctx, consumer, workName)
 			if err != nil {
 				// Resource not found means deletion complete
-				if strings.Contains(err.Error(), "not found") {
+				if errors.IsNotFound(err) {
 					log.Info(ctx, "ManifestWork deleted", logger.Fields{
 						"name":     workName,
 						"consumer": consumer,
@@ -1122,7 +1135,7 @@ func splitByOperator(expr, op1, op2 string) []string {
 	depth := 0
 
 	words := strings.Fields(expr)
-	for i, word := range words {
+	for _, word := range words {
 		if word == "(" || strings.HasPrefix(word, "(") {
 			depth += strings.Count(word, "(") - strings.Count(word, ")")
 		} else if word == ")" || strings.HasSuffix(word, ")") {
@@ -1143,14 +1156,24 @@ func splitByOperator(expr, op1, op2 string) []string {
 		current.WriteString(word)
 
 		// Handle inline operators like "A&&B" or "A||B"
-		if depth == 0 && i < len(words)-1 {
+		if depth == 0 {
 			if strings.Contains(word, op2) && op2 != "" {
-				subParts := strings.SplitN(current.String(), op2, 2)
-				if len(subParts) == 2 {
+				// Split the current content by the inline operator
+				content := current.String()
+				subParts := strings.Split(content, op2)
+				// Add the first part
+				if subParts[0] != "" {
 					parts = append(parts, subParts[0])
-					current.Reset()
-					current.WriteString(subParts[1])
 				}
+				// Add remaining parts separated by the operator
+				for _, part := range subParts[1:] {
+					if part != "" {
+						parts = append(parts, part)
+					}
+				}
+				// Reset current since we've processed the entire content
+				current.Reset()
+				continue
 			}
 		}
 	}

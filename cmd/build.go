@@ -12,9 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	workv1 "open-cluster-management.io/api/work/v1"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/internal/manifestwork"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 const (
@@ -287,9 +287,6 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 
 	// Output to file or stdout (if not applying)
 	if !flags.Apply {
-		if flags.Wait != "" {
-			return fmt.Errorf("cannot use --wait when not using --apply")
-		}
 		return outputManifestWork(existing, flags.OutputFile, flags.Output)
 	}
 
@@ -346,7 +343,7 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 		// Use timeout if specified, otherwise default to 5 minutes
 		waitTimeout := flags.Timeout
 		if waitTimeout == 0 {
-			waitTimeout = 5 * time.Minute
+			waitTimeout = DefaultWaitTimeout
 		}
 
 		log.Info(ctx, "Waiting for condition", logger.Fields{

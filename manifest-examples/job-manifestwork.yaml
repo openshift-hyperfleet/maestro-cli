@@ -36,7 +36,7 @@ spec:
                   image: busybox:1.36
                   command: ["sh", "-c"]
                   args:
-                    - "echo 'Starting test job...'; echo 'Event ID: $EVENT_ID'; echo 'Namespace: maestro-cli-test'; sleep 10; echo 'Job completed successfully!'; exit 1"
+                    - "echo 'Starting test job...'; echo 'Event ID: $EVENT_ID'; echo 'Namespace: maestro-cli-test'; sleep 10; echo 'Job completed successfully!'"
                   env:
                     - name: EVENT_ID
                       value: "12345"

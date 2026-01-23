@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/internal/manifestwork"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 // DiffFlags contains flags for the diff command
@@ -173,7 +173,7 @@ func runDiffCommand(ctx context.Context, flags *DiffFlags) error {
 	localManifests := make([]map[string]interface{}, 0, len(localMW.Spec.Workload.Manifests))
 	for i, m := range localMW.Spec.Workload.Manifests {
 		var manifest map[string]interface{}
-		if err := json.Unmarshal(m.Raw, &manifest); err != nil {
+		if err := manifestwork.UnmarshalManifest(m.Raw, &manifest); err != nil {
 			return fmt.Errorf("failed to parse local manifest %d: %w", i, err)
 		}
 		localManifests = append(localManifests, manifest)

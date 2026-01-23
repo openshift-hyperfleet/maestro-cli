@@ -1,15 +1,14 @@
-module github.com/hyperfleet/maestro-cli
+module github.com/openshift-hyperfleet/maestro-cli
 
 go 1.25.0
 
 require (
-	github.com/google/go-cmp v0.7.0
-	github.com/openshift-online/maestro v0.0.0
+	github.com/openshift-online/maestro v0.0.0-20260114055955-0f527cd4d82a
 	github.com/openshift-online/ocm-sdk-go v0.1.486
 	github.com/spf13/cobra v1.10.2
 	k8s.io/apimachinery v0.34.3
 	open-cluster-management.io/api v1.1.1-0.20260108015315-68cef17a0643
-	open-cluster-management.io/sdk-go v1.1.1-0.20260108080638-c607eaaa5d12
+	open-cluster-management.io/sdk-go v1.1.1-0.20260112054941-b6c1a665df1b
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -32,6 +31,7 @@ require (
 	github.com/golang/glog v1.2.5 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -77,6 +77,3 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
 )
-
-// Replace with local Maestro for development
-replace github.com/openshift-online/maestro => /Users/xueli/Workspace/maestro

@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/hyperfleet/maestro-cli/cmd"
+	"github.com/openshift-hyperfleet/maestro-cli/cmd"
 )
 
 func main() {

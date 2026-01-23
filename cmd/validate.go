@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hyperfleet/maestro-cli/internal/manifestwork"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 const (

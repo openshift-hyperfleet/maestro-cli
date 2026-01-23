@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/internal/manifestwork"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 // ApplyFlags contains flags for the apply command
@@ -213,7 +213,6 @@ func runApplyCommand(ctx context.Context, flags *ApplyFlags) error {
 			"results_path": flags.ResultsPath,
 			"error":        writeErr.Error(),
 		})
-		return fmt.Errorf("failed to write results file: %w", writeErr)
 	}
 
 	// Wait for condition if requested (using HTTP polling, like kubectl wait)
@@ -221,7 +220,7 @@ func runApplyCommand(ctx context.Context, flags *ApplyFlags) error {
 		// Use timeout if specified, otherwise default to 5 minutes
 		waitTimeout := flags.Timeout
 		if waitTimeout == 0 {
-			waitTimeout = 5 * time.Minute
+			waitTimeout = DefaultWaitTimeout
 		}
 
 		log.Info(ctx, "Waiting for condition", logger.Fields{

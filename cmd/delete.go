@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hyperfleet/maestro-cli/internal/maestro"
-	"github.com/hyperfleet/maestro-cli/internal/manifestwork"
-	"github.com/hyperfleet/maestro-cli/pkg/logger"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
+	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
+	"github.com/openshift-hyperfleet/maestro-cli/pkg/logger"
 )
 
 // DeleteFlags contains flags for the delete command
@@ -189,7 +189,7 @@ func deleteManifestWork(ctx context.Context, client *maestro.Client, flags *Dele
 		// Use timeout if specified, otherwise default to 5 minutes
 		waitTimeout := flags.Timeout
 		if waitTimeout == 0 {
-			waitTimeout = 5 * time.Minute
+			waitTimeout = DefaultWaitTimeout
 		}
 
 		log.Info(ctx, "Waiting for deletion completion...", logger.Fields{
