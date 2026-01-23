@@ -223,7 +223,7 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 
 	existing, err := client.GetManifestWork(ctx, flags.Consumer, flags.Name)
 	if err != nil {
-		if errors.IsNotFound(err) || strings.Contains(err.Error(), "not found") {
+		if errors.IsNotFound(err) {
 			if !flags.Force {
 				log.Error(ctx, err, "ManifestWork not found (use --force to create new)", logger.Fields{
 					"name":     flags.Name,
@@ -357,7 +357,7 @@ func runBuildCommand(ctx context.Context, flags *BuildFlags) error {
 
 		// Create callback to update results file on each poll
 		var callback maestro.WaitCallback
-		if flags.ResultsPath != "" {
+		if flags.ResultsPath != "" || os.Getenv("RESULTS_PATH") != "" {
 			callback = func(details *maestro.ManifestWorkDetails, conditionMet bool) error {
 				status := "Waiting"
 				message := fmt.Sprintf("Waiting for condition '%s'", flags.Wait)

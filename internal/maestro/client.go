@@ -263,12 +263,18 @@ func (c *Client) ValidateConsumer(ctx context.Context, consumer string) error {
 
 // GetManifestWork retrieves a ManifestWork from Maestro using gRPC (for watch operations)
 func (c *Client) GetManifestWork(ctx context.Context, consumer, name string) (*workv1.ManifestWork, error) {
+	if c.workClient == nil {
+		return nil, fmt.Errorf("http client not available: GetManifestWork requires http connection")
+	}
 	return c.workClient.ManifestWorks(consumer).Get(ctx, name, metav1.GetOptions{})
 }
 
 // ListManifestWorks lists all ManifestWorks for a consumer using gRPC subscription
 // Note: This only returns works received via subscription, not from database
 func (c *Client) ListManifestWorks(ctx context.Context, consumer string) (*workv1.ManifestWorkList, error) {
+	if c.workClient == nil {
+		return nil, fmt.Errorf("http client not available: ListManifestWorks requires http connection")
+	}
 	return c.workClient.ManifestWorks(consumer).List(ctx, metav1.ListOptions{})
 }
 
@@ -901,6 +907,10 @@ func (c *Client) ApplyManifestWork(
 	manifestWork *workv1.ManifestWork,
 	log *logger.Logger,
 ) (*workv1.ManifestWork, error) {
+	if c.workClient == nil {
+		return nil, fmt.Errorf("gRPC client not available: ApplyManifestWork requires gRPC connection")
+	}
+
 	// Set the namespace to the consumer name (this is how Maestro routing works)
 	manifestWork.Namespace = consumer
 

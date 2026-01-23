@@ -29,13 +29,13 @@ Note: Command-line flags take priority over environment variables.
 
 Examples:
   # Apply a ManifestWork to a target cluster
-  maestro-cli apply --manifest-file=nodepool.yaml --consumer=cluster-west-1 --watch
+  maestro-cli apply --manifest-file=nodepool.yaml --consumer=cluster-west-1 --wait
 
   # Get status of a ManifestWork
   maestro-cli get --name=hyperfleet-cluster-west-1-nodepool --consumer=cluster-west-1
 
   # Wait for a condition
-  maestro-cli wait --name=hyperfleet-cluster-west-1-nodepool --consumer=cluster-west-1 --condition=Applied`
+  maestro-cli wait --name=hyperfleet-cluster-west-1-nodepool --consumer=cluster-west-1 --for=Applied`
 )
 
 const (

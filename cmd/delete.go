@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
 	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
@@ -142,12 +143,16 @@ func deleteManifestWork(ctx context.Context, client *maestro.Client, flags *Dele
 	// Check if the ManifestWork exists using HTTP API (doesn't require gRPC subscription)
 	work, err := client.GetManifestWorkByNameHTTP(ctx, flags.Consumer, flags.Name)
 	if err != nil {
-		// ManifestWork doesn't exist - just warn and exit successfully
-		log.Warn(ctx, "ManifestWork not found, nothing to delete", logger.Fields{
-			"name":     flags.Name,
-			"consumer": flags.Consumer,
-		})
-		return nil
+		if errors.IsNotFound(err) {
+			// ManifestWork doesn't exist - just warn and exit successfully
+			log.Warn(ctx, "ManifestWork not found, nothing to delete", logger.Fields{
+				"name":     flags.Name,
+				"consumer": flags.Consumer,
+			})
+			return nil
+		}
+		// Other error (network, auth, server) - return it
+		return fmt.Errorf("failed to check ManifestWork existence: %w", err)
 	}
 
 	log.Debug(ctx, "Found ManifestWork", logger.Fields{

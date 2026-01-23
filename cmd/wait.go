@@ -3,9 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
 	"github.com/openshift-hyperfleet/maestro-cli/internal/manifestwork"
@@ -135,7 +137,10 @@ func runWaitCommand(ctx context.Context, flags *WaitFlags) error {
 	// Check if ManifestWork exists
 	_, err = client.GetManifestWorkByNameHTTP(ctx, flags.Consumer, flags.Name)
 	if err != nil {
-		return fmt.Errorf("ManifestWork %q not found: %w", flags.Name, err)
+		if errors.IsNotFound(err) {
+			return fmt.Errorf("ManifestWork %q not found in consumer %q", flags.Name, flags.Consumer)
+		}
+		return fmt.Errorf("failed to check ManifestWork existence: %w", err)
 	}
 
 	// Use timeout if specified, otherwise default to 5 minutes
@@ -157,7 +162,7 @@ func runWaitCommand(ctx context.Context, flags *WaitFlags) error {
 
 	// Create callback to update results file on each poll
 	var callback maestro.WaitCallback
-	if flags.ResultsPath != "" {
+	if flags.ResultsPath != "" || os.Getenv("RESULTS_PATH") != "" {
 		callback = func(details *maestro.ManifestWorkDetails, conditionMet bool) error {
 			status := statusWaiting
 			message := fmt.Sprintf("Waiting for condition '%s'", flags.For)
@@ -170,7 +175,7 @@ func runWaitCommand(ctx context.Context, flags *WaitFlags) error {
 		}
 	}
 
-	// Wait for condition (poll every 2 seconds)
+	// Wait for condition (poll every 1 second by default)
 	if err := client.WaitForCondition(
 		waitCtx,
 		flags.Consumer,

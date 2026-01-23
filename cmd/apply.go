@@ -4,6 +4,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -236,7 +237,7 @@ func runApplyCommand(ctx context.Context, flags *ApplyFlags) error {
 
 		// Create callback to update results file on each poll
 		var callback maestro.WaitCallback
-		if flags.ResultsPath != "" {
+		if flags.ResultsPath != "" || os.Getenv("RESULTS_PATH") != "" {
 			callback = func(details *maestro.ManifestWorkDetails, conditionMet bool) error {
 				status := "Waiting"
 				message := fmt.Sprintf("Waiting for condition '%s'", flags.Wait)

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/yaml"
 
 	"github.com/openshift-hyperfleet/maestro-cli/internal/maestro"
@@ -140,7 +141,7 @@ func runDiffCommand(ctx context.Context, flags *DiffFlags) error {
 	remoteMW, err := client.GetResourceBundleFullHTTP(ctxWithTimeout, flags.Consumer, localMW.Name)
 	if err != nil {
 		// Check if this is a "not found" error (404) vs other errors
-		if strings.Contains(err.Error(), "not found") {
+		if errors.IsNotFound(err) {
 			// ManifestWork doesn't exist remotely
 			fmt.Printf("ManifestWork %q does not exist on consumer %q\n", localMW.Name, flags.Consumer)
 			fmt.Printf("\nLocal ManifestWork would CREATE:\n")
