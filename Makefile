@@ -31,6 +31,11 @@ GOTEST := $(GOCMD) test
 GOMOD := $(GOCMD) mod
 GOFMT := gofmt
 
+# Invoke a pinned tool: $(call gotool,name)
+# All tools share tools/go.mod with Go 1.24+ tool directives.
+TOOL_MOD := tools/go.mod
+gotool = $(GOCMD) tool -modfile=$(TOOL_MOD) $(1)
+
 # Test parameters
 TEST_TIMEOUT := 30m
 RACE_FLAG := -race
@@ -69,9 +74,6 @@ BINDIR ?= $(GOPATH)/bin
 # Find all Go packages, excluding vendor and test directories
 PKG_DIRS := $(shell $(GOCMD) list ./... 2>/dev/null | grep -v /vendor/ | grep -v /test/)
 
-# Include bingo-managed tool versions
-include .bingo/Variables.mk
-
 .PHONY: help
 help: ## Display this help message
 	@echo "Available targets:"
@@ -102,20 +104,28 @@ test-all: test lint ## Run all tests and checks (unit + lint)
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 .PHONY: lint
-lint: $(GOLANGCI_LINT) ## Run golangci-lint
+lint: ## Run golangci-lint
 	@echo "Running golangci-lint..."
-	$(GOLANGCI_LINT) cache clean && $(GOLANGCI_LINT) run
+	$(call gotool,golangci-lint) run ./...
 
 .PHONY: fmt
-fmt: $(GOIMPORTS) ## Format code with gofmt and goimports
+fmt: ## Format code with gofmt and goimports
 	@echo "Formatting code..."
-	$(GOIMPORTS) -w .
+	$(GOCMD) tool goimports -w .
+
+.PHONY: tools
+tools: ## Ensure tool dependencies are up to date
+	cd tools && GOWORK=off $(GOCMD) mod tidy
 
 .PHONY: mod-tidy
 mod-tidy: ## Tidy Go module dependencies
 	@echo "Tidying Go modules..."
 	$(GOMOD) tidy
 	$(GOMOD) verify
+
+.PHONY: verify-tools
+verify-tools: tools ## Fail in CI if tool module drifted
+	@git diff --exit-code tools/go.mod tools/go.sum || (echo "tool modules out of date; run 'make tools'" && exit 1)
 
 .PHONY: binary
 binary: ## Build binary

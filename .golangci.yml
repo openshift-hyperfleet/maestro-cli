@@ -4,7 +4,7 @@
 # This is the baseline configuration for all HyperFleet Go repositories.
 # See standards/linting.md for full documentation of this standard.
 #
-# golangci-lint should be installed and versioned via bingo in each repository.
+# golangci-lint is installed via `go install` with a versioned binary managed in the Makefile.
 
 version: "2"
 
