@@ -34,7 +34,7 @@ GOFMT := gofmt
 # Invoke a pinned tool: $(call gotool,name)
 # All tools share tools/go.mod with Go 1.24+ tool directives.
 TOOL_MOD := tools/go.mod
-gotool = $(GOCMD) tool -modfile=$(TOOL_MOD) $(1)
+gotool = GOWORK=off "$(GOCMD)" tool -modfile="$(TOOL_MOD)" $(1)
 
 # Test parameters
 TEST_TIMEOUT := 30m
@@ -115,7 +115,7 @@ fmt: ## Format code with gofmt and goimports
 
 .PHONY: tools
 tools: ## Ensure tool dependencies are up to date
-	cd tools && GOWORK=off $(GOCMD) mod tidy
+	cd tools && GOWORK=off "$(GOCMD)" mod tidy
 
 .PHONY: mod-tidy
 mod-tidy: ## Tidy Go module dependencies
@@ -125,7 +125,7 @@ mod-tidy: ## Tidy Go module dependencies
 
 .PHONY: verify-tools
 verify-tools: tools ## Fail in CI if tool module drifted
-	@git diff --exit-code tools/go.mod tools/go.sum || (echo "tool modules out of date; run 'make tools'" && exit 1)
+	@git diff --exit-code HEAD -- tools/go.mod tools/go.sum || (echo "tool modules out of date; run 'make tools'" && exit 1)
 
 .PHONY: binary
 binary: ## Build binary
