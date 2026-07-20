@@ -34,7 +34,7 @@ GOFMT := gofmt
 # Invoke a pinned tool: $(call gotool,name)
 # All tools share tools/go.mod with Go 1.24+ tool directives.
 TOOL_MOD := tools/go.mod
-gotool = GOWORK=off "$(GOCMD)" tool -modfile="$(TOOL_MOD)" $(1)
+gotool = "$(GOCMD)" tool -modfile="$(TOOL_MOD)" $(1)
 
 # Test parameters
 TEST_TIMEOUT := 30m
@@ -115,7 +115,7 @@ fmt: ## Format code with gofmt and goimports
 
 .PHONY: tools
 tools: ## Ensure tool dependencies are up to date
-	cd tools && GOWORK=off "$(GOCMD)" mod tidy
+	cd tools && "$(GOCMD)" mod tidy
 
 .PHONY: mod-tidy
 mod-tidy: ## Tidy Go module dependencies
