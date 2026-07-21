@@ -1,7 +1,7 @@
 ARG BASE_IMAGE=gcr.io/distroless/static-debian12:nonroot
 
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26.0-alpine AS builder
 
 # Git commit passed from build machine (avoids installing git in container)
 ARG GIT_COMMIT=unknown

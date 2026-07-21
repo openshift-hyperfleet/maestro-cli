@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-- Go 1.25.0 or later
+- Go 1.26.0 or later
 - Access to a Kubernetes cluster with Maestro installed
 - Docker (for building container images)
 

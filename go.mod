@@ -1,6 +1,6 @@
 module github.com/openshift-hyperfleet/maestro-cli
 
-go 1.25.4
+go 1.26.0
 
 require (
 	github.com/atotto/clipboard v0.1.4
