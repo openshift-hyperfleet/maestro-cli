@@ -31,8 +31,8 @@ GOTEST := $(GOCMD) test
 GOMOD := $(GOCMD) mod
 GOFMT := gofmt
 
-# Invoke a pinned tool: $(call gotool,name)
-# All tools share tools/go.mod with Go 1.24+ tool directives.
+# Invoke a tool from the tools module: $(call gotool,name)
+# Heavy-dep tools live in tools/go.mod; lightweight tools (goimports) stay in go.mod.
 TOOL_MOD := tools/go.mod
 gotool = "$(GOCMD)" tool -modfile="$(TOOL_MOD)" $(1)
 
